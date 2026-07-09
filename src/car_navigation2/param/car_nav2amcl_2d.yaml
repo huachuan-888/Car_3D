@@ -1,3 +1,4 @@
+# ===================== AMCL定位参数 =====================
 amcl:
   ros__parameters:
     use_sim_time: True
@@ -14,7 +15,7 @@ amcl:
     global_frame_id: "map"
     lambda_short: 0.1
     laser_likelihood_max_dist: 3.0
-    laser_max_range: 10.0
+    laser_max_range: 3.5  # 适配你的雷达3.5m最大测距，原10.0改3.5
     laser_min_range: 0.2
     laser_model_type: "likelihood_field"
     max_beams: 80
@@ -47,13 +48,14 @@ amcl_rclcpp_node:
   ros__parameters:
     use_sim_time: True
 
+# ===================== 行为树导航 =====================
 bt_navigator: 
   ros__parameters:
     use_sim_time: True
     global_frame: map
     robot_base_frame: base_footprint
     odom_topic: /odom
-    bt_loop_duration: 50 # 原本是 10 (即 10毫秒，100Hz)，改为 50 (即 50毫秒，20Hz)
+    bt_loop_duration: 50
     default_server_timeout: 20
     wait_for_service_timeout: 1000
     plugin_lib_names:
@@ -112,10 +114,11 @@ bt_navigator_navigate_to_pose_rclcpp_node:
   ros__parameters:
     use_sim_time: True
 
+# ===================== 局部控制器 纯追踪 =====================
 controller_server:
   ros__parameters:
     use_sim_time: True
-    controller_frequency: 10.0 # 原本是 20.0 (20Hz)，降为 10.0 (10Hz) 足矣
+    controller_frequency: 10.0
     min_x_velocity_threshold: 0.001
     min_y_velocity_threshold: 0.5
     min_theta_velocity_threshold: 0.001
@@ -137,27 +140,29 @@ controller_server:
 
     FollowPath:
       plugin: "nav2_regulated_pure_pursuit_controller::RegulatedPurePursuitController"
-      desired_linear_vel: 1.2  #巡航速度
+      desired_linear_vel: 1.2
       max_robot_pose_search_dist: 10.0 
       use_velocity_scaled_lookahead_dist: true 
       lookahead_time: 1.5
       min_lookahead_dist: 0.4    
-      max_lookahead_dist: 1.2  # 【核心修改】：把视距拉长！一定要大于车身长度 (0.75m)  
+      max_lookahead_dist: 1.2  
       use_collision_detection: true 
       max_allowed_time_to_collision_up_to_carrot: 1.0 
       use_regulated_linear_velocity_scaling: true 
-      use_cost_regulated_linear_velocity_scaling: false # 靠近障碍物时的代价减速机制
+      use_cost_regulated_linear_velocity_scaling: false
       regulated_linear_scaling_min_radius: 0.9 
       regulated_linear_scaling_min_speed: 0.5 
       min_approach_linear_velocity: 0.05
       approach_velocity_scaling_dist: 0.6 
       use_rotate_to_heading: true
-      allow_reversing: true
+      allow_reversing: true             # 【修改 1】：砸烂倒挡锁，允许局部控制器倒车
+      max_angular_vel: 2.5              # 【新增】：强制放开最大旋转速度，让转弯更干脆
       rotate_to_heading_min_angle: 0.35 
       rotate_to_heading_angular_vel: 2.5 
       max_angular_accel: 3.5 
       transform_tolerance: 0.2
 
+# ===================== 局部代价地图 =====================
 local_costmap:
   local_costmap:
     ros__parameters:
@@ -178,7 +183,7 @@ local_costmap:
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 3.0
-        inflation_radius: 0.25
+        inflation_radius: 1.0  # 【修改 4】：把 0.25 改为 1.0 米。这样彩色光晕才会从小车底下露出来！
 
       obstacle_layer:
         plugin: "nav2_costmap_2d::ObstacleLayer"
@@ -198,6 +203,7 @@ local_costmap:
 
       always_send_full_costmap: true
 
+# ===================== 全局代价地图 =====================
 global_costmap:
   global_costmap:
     ros__parameters:
@@ -230,14 +236,15 @@ global_costmap:
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 3.0
-        inflation_radius: 0.25  
+        inflation_radius: 1.0  # 【修改 4】：把 0.25 改为 1.0 米。这样彩色光晕才会从小车底下露出来！ 
       always_send_full_costmap: True
 
+# ===================== 地图服务（bringup会自动读取launch传入的map参数，这里路径注释屏蔽，避免冲突） =====================
 map_server:
   ros__parameters:
     use_sim_time: True
-    yaml_filename: "/home/huang/four_wheeled_car/src/car_navigation2/maps/hello2.yaml"
-
+    # 【必须保留这个空键值】让 launch 里的 RewriteYaml 有目标可以替换！
+    yaml_filename: ""
 map_saver:
   ros__parameters:
     use_sim_time: True
@@ -246,9 +253,10 @@ map_saver:
     occupied_thresh_default: 0.65
     map_subscribe_transient_local: True
 
+# ===================== 全局规划器 Smac Hybrid-A* =====================
 planner_server:
   ros__parameters:
-    expected_planner_frequency: 10.0 # 原本是 20.0，降为 10.0
+    expected_planner_frequency: 10.0
     use_sim_time: True
     planner_plugins: ["GridBased"]
     GridBased:
@@ -259,8 +267,8 @@ planner_server:
       max_iterations: 1000000
       max_on_approach_iterations: 1000
       max_planning_time: 2.0
-      motion_model_for_search: "DUBIN" 
-      minimum_turning_radius: 0.4  # 【核心修改】：告诉规划器，这是一辆长车，请给我画半径 0.4 米的弧线弯道！
+      motion_model_for_search: "REEDS_SHEPP"  # 【修改 2】：从 DUBIN 改为 REEDS_SHEPP，这个模型允许前后行驶！
+      minimum_turning_radius: 0.05            # 【修改 3】：把转弯半径缩小到 0.05 米，允许差速小车几乎原地打转！
       angle_quantization_bins: 72 
       reverse_penalty: 2.0
       change_penalty: 0.1
@@ -268,6 +276,7 @@ planner_server:
       cost_penalty: 2.0
       retrospective_penalty: 0.0
 
+# ===================== 路径平滑器 =====================
 smoother_server:
   ros__parameters:
     use_sim_time: True
@@ -278,9 +287,10 @@ smoother_server:
       max_its: 1000
       do_refinement: True
 
+# ===================== 行为恢复服务 =====================
 behavior_server:
   ros__parameters:
-    costmap_topic: local_costmap/costmap
+    costmap_topic: local_costmap/costmap_raw
     footprint_topic: local_costmap/published_footprint
     cycle_frequency: 10.0
     behavior_plugins: ["spin", "backup", "drive_on_heading", "assisted_teleop", "wait"]

@@ -87,15 +87,8 @@
   </link>
 
   <!-- imu link -->
-  <link name="imu_link">
-    <visual>
-      <origin xyz="0 0 0.0" rpy="0 0 0"/>
-      <geometry>
-            <box size="0.02 0.02 0.02"/>
-      </geometry>
-    </visual>
-    <xacro:imu_physics />
-  </link>
+  <link name="imu_link"/>
+   
 
   <!-- 深度相机 link -->
   <link name="depth_camera_link">
@@ -169,7 +162,7 @@
   <joint name="imu_joint" type="fixed">
       <parent link="base_link" />
       <child link="imu_link" />
-      <origin xyz="0 0 0" />
+      <origin xyz="0 0 0" rpy="0 0 0" />
   </joint>
 
   <!-- 深度相机 固定关节，安装在车头最前端 -->

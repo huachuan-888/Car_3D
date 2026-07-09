@@ -1,3 +1,5 @@
+-- 2d 地图构建  imu+激光雷达 良好
+
 include "map_builder.lua"
 include "trajectory_builder.lua"
 
@@ -23,6 +25,7 @@ options = {
   num_multi_echo_laser_scans = 0,
   -- 10改为1，1/1=1等于不分割
   num_subdivisions_per_laser_scan = 1,
+  -- 点云
   num_point_clouds = 0,
   lookup_transform_timeout_sec = 0.2,
   submap_publish_period_sec = 0.3,
@@ -56,6 +59,10 @@ TRAJECTORY_BUILDER_2D.motion_filter.max_angle_radians = math.rad(0.1)
 POSE_GRAPH.constraint_builder.min_score = 0.65
 --0.6改成0.7,全局定位最小分数，低于此分数则认为目前全局定位不准确
 POSE_GRAPH.constraint_builder.global_localization_min_score = 0.7
+
+
+
+
 
 -- 设置0可关闭全局SLAM
 -- POSE_GRAPH.optimize_every_n_nodes = 0
